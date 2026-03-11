@@ -1,0 +1,37 @@
+# ASDF/Quicklisp artifacts
+*.fasl
+*.fas
+*.dfsl
+*.pfsl
+*.d64fsl
+*.p64fsl
+*.lx64fsl
+*.lx32fsl
+*.dx64fsl
+*.dx32fsl
+*.fx64fsl
+*.fx32fsl
+*.sx64fsl
+*.sx32fsl
+*.wx64fsl
+*.wx32fsl
+
+# SBCL artifacts
+*.abcl
+*.lib
+
+# System index cache
+system-index.txt
+
+# Editor backups
+*~
+\#*\#
+.\#*
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.swp
+*.swo

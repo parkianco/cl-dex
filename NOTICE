@@ -1,0 +1,9 @@
+cl-dex - DEX Order Book Matching Engine
+Copyright (c) 2024-2026 Parkian Company LLC. All rights reserved.
+
+This software is licensed under the BSD 3-Clause License.
+See the LICENSE file for the full license text.
+
+This project implements a Central Limit Order Book (CLOB) matching engine
+with price-time priority, supporting limit orders, market orders, and
+multiple time-in-force options (GTC, IOC, FOK, GTT).

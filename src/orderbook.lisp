@@ -171,42 +171,41 @@
       (loop while (and (> remaining 0) opposite-orders)
             for match = (car opposite-orders)
             do
-               ;; Check price compatibility
-               (unless (price-crosses-p order match)
-                 (return))
+               (block continue-iteration
+                 ;; Check price compatibility
+                 (unless (price-crosses-p order match)
+                   (return))
 
-               ;; Check if match is expired
-               (when (order-expired-p match)
-                 (setf (limit-order-status match) +status-expired+)
-                 (pop opposite-orders)
-                 (if (eq (limit-order-side order) +side-buy+)
-                     (setf (order-book-asks book) opposite-orders)
-                     (setf (order-book-bids book) opposite-orders))
-                 ;; Continue to next order
-                 (go next-iteration))
+                 ;; Check if match is expired
+                 (when (order-expired-p match)
+                   (setf (limit-order-status match) +status-expired+)
+                   (pop opposite-orders)
+                   (if (eq (limit-order-side order) +side-buy+)
+                       (setf (order-book-asks book) opposite-orders)
+                       (setf (order-book-bids book) opposite-orders))
+                   ;; Continue to next order
+                   (return-from continue-iteration))
 
-               ;; Execute fill
-               (let* ((match-remaining (limit-order-remaining-amount match))
-                      (fill-amount (min remaining match-remaining))
-                      (fill-price (limit-order-price match)) ; Maker price
-                      (trade (execute-fill order match fill-amount fill-price book)))
+                 ;; Execute fill
+                 (let* ((match-remaining (limit-order-remaining-amount match))
+                        (fill-amount (min remaining match-remaining))
+                        (fill-price (limit-order-price match)) ; Maker price
+                        (trade (execute-fill order match fill-amount fill-price book)))
 
-                 (push trade trades)
-                 (decf remaining fill-amount)
+                   (push trade trades)
+                   (decf remaining fill-amount)
 
-                 ;; Update match order
-                 (incf (limit-order-filled-amount match) fill-amount)
-                 (setf (limit-order-updated-at match) (get-current-time))
-                 (if (zerop (limit-order-remaining-amount match))
-                     (progn
-                       (setf (limit-order-status match) +status-filled+)
-                       (pop opposite-orders)
-                       (if (eq (limit-order-side order) +side-buy+)
-                           (setf (order-book-asks book) opposite-orders)
-                           (setf (order-book-bids book) opposite-orders)))
-                     (setf (limit-order-status match) +status-partial+)))
-
-            next-iteration)
+                   ;; Update match order
+                   (incf (limit-order-filled-amount match) fill-amount)
+                   (setf (limit-order-updated-at match) (get-current-time))
+                   (if (zerop (limit-order-remaining-amount match))
+                       (progn
+                         (setf (limit-order-status match) +status-filled+)
+                         (pop opposite-orders)
+                         (if (eq (limit-order-side order) +side-buy+)
+                             (setf (order-book-asks book) opposite-orders)
+                             (setf (order-book-bids book) opposite-orders)))
+                       (setf (limit-order-status match) +status-partial+)))))
 
       ;; Update incoming order
       (let ((filled (- (limit-order-amount order) remaining)))
@@ -299,56 +298,55 @@
         (loop while (and (> remaining 0) opposite-orders)
               for match = (car opposite-orders)
               do
-                 ;; Skip expired orders
-                 (when (order-expired-p match)
-                   (setf (limit-order-status match) +status-expired+)
-                   (remove-order-from-book match book)
-                   (pop opposite-orders)
-                   (go next-iteration))
+                 (block continue-iteration
+                   ;; Skip expired orders
+                   (when (order-expired-p match)
+                     (setf (limit-order-status match) +status-expired+)
+                     (remove-order-from-book match book)
+                     (pop opposite-orders)
+                     (return-from continue-iteration))
 
-                 ;; Check slippage if specified
-                 (when max-slippage-bps
-                   (let* ((match-price (limit-order-price match))
-                          (slippage-bps (if (eq side +side-buy+)
-                                            (floor (* (- match-price reference-price) 10000) reference-price)
-                                            (floor (* (- reference-price match-price) 10000) reference-price))))
-                     (when (> slippage-bps max-slippage-bps)
-                       (return))))
+                   ;; Check slippage if specified
+                   (when max-slippage-bps
+                     (let* ((match-price (limit-order-price match))
+                            (slippage-bps (if (eq side +side-buy+)
+                                              (floor (* (- match-price reference-price) 10000) reference-price)
+                                              (floor (* (- reference-price match-price) 10000) reference-price))))
+                       (when (> slippage-bps max-slippage-bps)
+                         (return))))
 
-                 ;; Execute fill
-                 (let* ((match-remaining (limit-order-remaining-amount match))
-                        (fill-amount (min remaining match-remaining))
-                        (fill-price (limit-order-price match)))
+                   ;; Execute fill
+                   (let* ((match-remaining (limit-order-remaining-amount match))
+                          (fill-amount (min remaining match-remaining))
+                          (fill-price (limit-order-price match)))
 
-                   ;; Create a temporary taker order for the trade
-                   (let ((taker-order (make-limit-order
-                                       :id (generate-order-id)
-                                       :trader trader
-                                       :pair pair
-                                       :side side
-                                       :price fill-price
-                                       :amount fill-amount
-                                       :filled-amount 0
-                                       :status +status-open+
-                                       :created-at (get-current-time))))
+                     ;; Create a temporary taker order for the trade
+                     (let ((taker-order (make-limit-order
+                                         :id (generate-order-id)
+                                         :trader trader
+                                         :pair pair
+                                         :side side
+                                         :price fill-price
+                                         :amount fill-amount
+                                         :filled-amount 0
+                                         :status +status-open+
+                                         :created-at (get-current-time))))
 
-                     (let ((trade (execute-fill taker-order match fill-amount fill-price book)))
-                       (push trade trades)
-                       (incf total-filled fill-amount)
-                       (incf total-cost (* fill-amount fill-price))
-                       (decf remaining fill-amount)
+                       (let ((trade (execute-fill taker-order match fill-amount fill-price book)))
+                         (push trade trades)
+                         (incf total-filled fill-amount)
+                         (incf total-cost (* fill-amount fill-price))
+                         (decf remaining fill-amount)
 
-                       ;; Update match order
-                       (incf (limit-order-filled-amount match) fill-amount)
-                       (setf (limit-order-updated-at match) (get-current-time))
-                       (if (zerop (limit-order-remaining-amount match))
-                           (progn
-                             (setf (limit-order-status match) +status-filled+)
-                             (remove-order-from-book match book)
-                             (pop opposite-orders))
-                           (setf (limit-order-status match) +status-partial+)))))
-
-              next-iteration))
+                         ;; Update match order
+                         (incf (limit-order-filled-amount match) fill-amount)
+                         (setf (limit-order-updated-at match) (get-current-time))
+                         (if (zerop (limit-order-remaining-amount match))
+                             (progn
+                               (setf (limit-order-status match) +status-filled+)
+                               (remove-order-from-book match book)
+                               (pop opposite-orders))
+                             (setf (limit-order-status match) +status-partial+))))))))
 
       (when (and (> remaining 0) (zerop total-filled))
         (error 'insufficient-liquidity-error
@@ -503,58 +501,57 @@
         (trades nil))
 
     (loop while t do
-      (let ((best-bid (car (order-book-bids book)))
-            (best-ask (car (order-book-asks book))))
+      (block continue-loop
+        (let ((best-bid (car (order-book-bids book)))
+              (best-ask (car (order-book-asks book))))
 
-        ;; Exit if no orders on either side
-        (unless (and best-bid best-ask)
-          (return))
+          ;; Exit if no orders on either side
+          (unless (and best-bid best-ask)
+            (return-from match-orders (nreverse trades)))
 
-        ;; Exit if prices don't cross
-        (unless (>= (limit-order-price best-bid) (limit-order-price best-ask))
-          (return))
+          ;; Exit if prices don't cross
+          (unless (>= (limit-order-price best-bid) (limit-order-price best-ask))
+            (return-from match-orders (nreverse trades)))
 
-        ;; Skip expired orders
-        (when (order-expired-p best-bid)
-          (setf (limit-order-status best-bid) +status-expired+)
-          (pop (order-book-bids book))
-          (go continue))
+          ;; Skip expired orders
+          (when (order-expired-p best-bid)
+            (setf (limit-order-status best-bid) +status-expired+)
+            (pop (order-book-bids book))
+            (return-from continue-loop))
 
-        (when (order-expired-p best-ask)
-          (setf (limit-order-status best-ask) +status-expired+)
-          (pop (order-book-asks book))
-          (go continue))
+          (when (order-expired-p best-ask)
+            (setf (limit-order-status best-ask) +status-expired+)
+            (pop (order-book-asks book))
+            (return-from continue-loop))
 
-        ;; Execute match
-        (let* ((fill-amount (min (limit-order-remaining-amount best-bid)
-                                 (limit-order-remaining-amount best-ask)))
-               (fill-price (limit-order-price best-ask)) ; Earlier order's price
-               (trade (execute-fill best-bid best-ask fill-amount fill-price book)))
+          ;; Execute match
+          (let* ((fill-amount (min (limit-order-remaining-amount best-bid)
+                                   (limit-order-remaining-amount best-ask)))
+                 (fill-price (limit-order-price best-ask)) ; Earlier order's price
+                 (trade (execute-fill best-bid best-ask fill-amount fill-price book)))
 
-          (push trade trades)
+            (push trade trades)
 
-          ;; Update orders
-          (incf (limit-order-filled-amount best-bid) fill-amount)
-          (incf (limit-order-filled-amount best-ask) fill-amount)
+            ;; Update orders
+            (incf (limit-order-filled-amount best-bid) fill-amount)
+            (incf (limit-order-filled-amount best-ask) fill-amount)
 
-          (let ((now (get-current-time)))
-            (setf (limit-order-updated-at best-bid) now)
-            (setf (limit-order-updated-at best-ask) now))
+            (let ((now (get-current-time)))
+              (setf (limit-order-updated-at best-bid) now)
+              (setf (limit-order-updated-at best-ask) now))
 
-          ;; Update statuses and remove filled orders
-          (if (zerop (limit-order-remaining-amount best-bid))
-              (progn
-                (setf (limit-order-status best-bid) +status-filled+)
-                (pop (order-book-bids book)))
-              (setf (limit-order-status best-bid) +status-partial+))
+            ;; Update statuses and remove filled orders
+            (if (zerop (limit-order-remaining-amount best-bid))
+                (progn
+                  (setf (limit-order-status best-bid) +status-filled+)
+                  (pop (order-book-bids book)))
+                (setf (limit-order-status best-bid) +status-partial+))
 
-          (if (zerop (limit-order-remaining-amount best-ask))
-              (progn
-                (setf (limit-order-status best-ask) +status-filled+)
-                (pop (order-book-asks book)))
-              (setf (limit-order-status best-ask) +status-partial+))))
-
-      continue)
+            (if (zerop (limit-order-remaining-amount best-ask))
+                (progn
+                  (setf (limit-order-status best-ask) +status-filled+)
+                  (pop (order-book-asks book)))
+                (setf (limit-order-status best-ask) +status-partial+))))))
 
     (nreverse trades)))
 

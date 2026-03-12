@@ -13,6 +13,7 @@
    ;; Limit Order
    #:limit-order
    #:make-limit-order
+   #:limit-order-p
    #:limit-order-id
    #:limit-order-trader
    #:limit-order-pair
@@ -43,6 +44,7 @@
    ;; Order Book
    #:order-book
    #:make-order-book
+   #:order-book-p
    #:order-book-pair
    #:order-book-bids
    #:order-book-asks

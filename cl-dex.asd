@@ -33,4 +33,6 @@ and multiple time-in-force options (GTC, IOC, FOK, GTT)."
                 :serial t
                 :components ((:file "orderbook-test"))))
   :perform (test-op (op c)
-             (uiop:symbol-call :cl-dex/test :run-tests)))
+             (let ((result (uiop:symbol-call :cl-dex/test :run-tests)))
+               (unless result
+                 (error "Tests failed")))))

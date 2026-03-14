@@ -3,9 +3,9 @@
 ;;;;
 ;;;; cl-dex.asd - DEX Order Book Matching Engine System Definition
 
-(defsystem #:cl-dex
+(asdf:defsystem #:cl-dex
   :name "cl-dex"
-  :version "1.0.0"
+  :version "0.1.0"
   :author "Parkian Company LLC"
   :license "BSD-3-Clause"
   :description "DEX Order Book Matching Engine"
@@ -19,11 +19,11 @@ and multiple time-in-force options (GTC, IOC, FOK, GTT)."
                 :serial t
                 :components ((:file "types")
                              (:file "orderbook"))))
-  :in-order-to ((test-op (test-op #:cl-dex/test))))
+  :in-order-to ((asdf:test-op (test-op #:cl-dex/test))))
 
-(defsystem #:cl-dex/test
+(asdf:defsystem #:cl-dex/test
   :name "cl-dex/test"
-  :version "1.0.0"
+  :version "0.1.0"
   :author "Parkian Company LLC"
   :license "BSD-3-Clause"
   :description "Tests for cl-dex"
@@ -32,7 +32,7 @@ and multiple time-in-force options (GTC, IOC, FOK, GTT)."
   :components ((:module "test"
                 :serial t
                 :components ((:file "orderbook-test"))))
-  :perform (test-op (op c)
+  :perform (asdf:test-op (op c)
              (let ((result (uiop:symbol-call :cl-dex/test :run-tests)))
                (unless result
                  (error "Tests failed")))))
